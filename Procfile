@@ -1,1 +1,1 @@
-volatility-analyzer: python volatility-analyzer.py
+vol-an: python volatility-analyzer.py
