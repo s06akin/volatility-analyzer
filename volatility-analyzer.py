@@ -34,9 +34,9 @@ while True:
       '1day': [3, '1day', 50]
     }
 
-    bots = [[582818, 'chz/btc', 'working'],
-            [582817, 'ada/btc', 'working'],
-            [582703, 'ht/btc', 'working']]
+    bots = [[582818, 'chz/btc', 'waiting', 'no signal'],
+            [582817, 'ada/btc', 'waiting', 'no signal'],
+            [582703, 'ht/btc', 'working', 'no signal']]
 
     url = 'https://app.revenuebot.io/external/tv'
 
@@ -54,8 +54,8 @@ while True:
     url_cmc = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 
     parameters_cmc = {
-      'start':'1',
-      'limit':'200'
+      'start': '1',
+      'limit': '200'
     }
 
     headers_cmc = {
@@ -92,7 +92,7 @@ while True:
 
     df = df.merge(price_usd, left_index=True, right_index=True)
 
-    btc_total_supply = df[df['id']==1]['total_supply']
+    btc_total_supply = df[df['id'] == 1]['total_supply']
     df = df.assign(BPE = df.total_supply / btc_total_supply[0] * df.price_usd)
     df = df[(df['cmc_rank'] <= 100) & (df['BPE'] <= df[df['id'] == 1]['BPE'][0])]
     df = df.set_index('id')
@@ -547,6 +547,7 @@ while True:
 
         if [obj.id for obj in trade_list]:
             bot[2] = 'working'
+            bot[3] = 'no signal'
         else:
             bot[2] = 'waiting'
 
@@ -558,7 +559,7 @@ while True:
                 break
         if working_pair == 'N':
             for bot in bots:
-                if bot[2] == 'waiting':
+                if bot[2] == 'waiting' and bot[3] == 'no signal':
                     bot[1] = new_pair
                     data['bot_id'] = bot[0]
                     data['pair'] = new_pair
@@ -569,6 +570,7 @@ while True:
                     while not response.ok:
                         time.sleep(10)
                         response = requests.post(url, data=send_data, headers=newHeaders)
-            break
+                    bot[3] = 'signal'
+                    break
 
     time.sleep(300)
