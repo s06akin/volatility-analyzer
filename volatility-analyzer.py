@@ -43,9 +43,9 @@ while True:
     headers = {"Content-Type": "application/json"}
 
     data = {
-       "action" : "enter_cycle",
-       "ref_token" : "a06e744b-b5e6-11ec-9e28-8e4b67c9fcba",
-       "bot_id" : 582818,
+       "action": "enter_cycle",
+       "ref_token": "a06e744b-b5e6-11ec-9e28-8e4b67c9fcba",
+       "bot_id": 582818,
        "pair": "ada/btc"
     }
 
@@ -551,15 +551,22 @@ while True:
             bot[2] = 'waiting'
 
     for new_pair in mf_list:
+        working_pair = 'N'
         for bot in bots:
-            if bot[2] == 'waiting':
-                bot[1] = new_pair
-                data['bot_id'] = bot[0]
-                data['pair'] = new_pair
-                data = json.dumps(data)
-                response = requests.post(url, headers=headers, json=data)
-                while not response.ok:
-                    time.sleep(10)
-                    response = requests.post(url, headers=headers, json=data)
+            if bot[1] == new_pair and bot[2] == 'working':
+                working_pair = 'Y'
+                break
+        if working_pair == 'N':
+            for bot in bots:
+                if bot[2] == 'waiting':
+                    bot[1] = new_pair
+                    data['bot_id'] = bot[0]
+                    data['pair'] = new_pair
+                    send_data = json.dumps(data)
+                    response = requests.post(url, headers=headers, json=send_data)
+                    while not response.ok:
+                        time.sleep(10)
+                        response = requests.post(url, headers=headers, json=send_data)
+                    break
 
     time.sleep(300)
