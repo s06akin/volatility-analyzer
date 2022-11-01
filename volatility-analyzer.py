@@ -34,7 +34,7 @@ while True:
       '1day': [3, '1day', 50]
     }
 
-    bots = [[582818, 'zil/btc', 'working'],
+    bots = [[582818, 'chz/btc', 'working'],
             [582817, 'ada/btc', 'working'],
             [582703, 'ht/btc', 'working']]
 
