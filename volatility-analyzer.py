@@ -40,7 +40,7 @@ while True:
 
     url = 'https://app.revenuebot.io/external/tv'
 
-    headers = {"Content-Type": "application/json"}
+    newHeaders = {'Content-type': 'application/json', 'Accept': 'application/json'}
 
     data = {
        "action": "enter_cycle",
@@ -563,10 +563,10 @@ while True:
                     data['bot_id'] = bot[0]
                     data['pair'] = new_pair
                     send_data = json.dumps(data)
-                    response = requests.post(url, headers=headers, json=send_data)
+                    response = requests.post(url, data=send_data, headers=newHeaders)
                     while not response.ok:
                         time.sleep(10)
-                        response = requests.post(url, headers=headers, json=send_data)
+                        response = requests.post(url, data=send_data, headers=newHeaders)
                     break
 
     time.sleep(300)
