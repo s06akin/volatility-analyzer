@@ -563,10 +563,12 @@ while True:
                     data['bot_id'] = bot[0]
                     data['pair'] = new_pair
                     send_data = json.dumps(data)
+                    print(send_data)
                     response = requests.post(url, data=send_data, headers=newHeaders)
+                    print(response.status_code)
                     while not response.ok:
                         time.sleep(10)
                         response = requests.post(url, data=send_data, headers=newHeaders)
-                    break
+            break
 
     time.sleep(300)
