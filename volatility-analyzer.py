@@ -36,7 +36,7 @@ pump_dump_filter = {
 }
 
 bots = [[582818, 'doge/btc', 'working', 'no signal'],
-        [582817, 'chz/btc', 'working', 'no signal'],
+        [582817, 'doge/btc', 'working', 'no signal'],
         [582703, 'ht/btc', 'working', 'no signal']]
 
 url = 'https://app.revenuebot.io/external/tv'
@@ -587,7 +587,7 @@ while True:
                     send_data = json.dumps(data)
                     response = requests.post(url, data=send_data, headers=newHeaders)
 
-                    print(response.status_code, send_data)
+                    print(response.status_code, response.text, response.raise_for_status(), send_data)
 
                     if response.ok:
                         bot[3] = 'signal'
