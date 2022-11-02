@@ -53,6 +53,7 @@ data = {
 huobi_api_key = "8ac3009b-9e4c7392-ed2htwf5tf-7e1e3"
 huobi_secret_key = "3f2b17c9-5080f327-9460b099-e62fd"
 
+cmc_req_cnt = 0
 
 # Huobi SDK
 
@@ -427,56 +428,59 @@ class PrintBasic:
 
 while True:
 
-    # Coinmarketcap API
-    url_cmc = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
+    if cmc_req_cnt == 0 or cmc_req_cnt == 12:
 
-    parameters_cmc = {
-      'start': '1',
-      'limit': '200'
-    }
+        # Coinmarketcap API
+        url_cmc = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 
-    headers_cmc = {
-      'Accepts': 'application/json',
-      'X-CMC_PRO_API_KEY': '7326fb8d-6d2a-4017-b422-fbaf8ac4801b'
-    }
+        parameters_cmc = {
+          'start': '1',
+          'limit': '200'
+        }
 
-    session_cmc = requests.Session()
-    session_cmc.headers.update(headers_cmc)
+        headers_cmc = {
+          'Accepts': 'application/json',
+          'X-CMC_PRO_API_KEY': '7326fb8d-6d2a-4017-b422-fbaf8ac4801b'
+        }
 
-    response_cmc = session_cmc.get(url_cmc, params=parameters_cmc).json()
-    data_cmc = pd.DataFrame(response_cmc['data'])
+        session_cmc = requests.Session()
+        session_cmc.headers.update(headers_cmc)
 
-
-    # Exclude stablecoins
-
-    stablecoins_list = []
-    for i in data_cmc.index:
-        for j in range(len(data_cmc['tags'][i])):
-            if data_cmc['tags'][i][j] == 'stablecoin':
-                stablecoins_list.append(i)
-
-    stablecoins = pd.DataFrame(data_cmc.iloc[stablecoins_list])
-    data_cmc = data_cmc.loc[~data_cmc['id'].isin(list(stablecoins['id']))]
-    data_cmc = data_cmc.reset_index(drop = True)
+        response_cmc = session_cmc.get(url_cmc, params=parameters_cmc).json()
+        data_cmc = pd.DataFrame(response_cmc['data'])
 
 
-    # Top 100 coins with Bitcoin Price Equivalence < Bitcoin Price
+        # Exclude stablecoins
 
-    df = pd.DataFrame(data_cmc, columns=['id', 'symbol', 'cmc_rank', 'total_supply', 'quote'])
+        stablecoins_list = []
+        for i in data_cmc.index:
+            for j in range(len(data_cmc['tags'][i])):
+                if data_cmc['tags'][i][j] == 'stablecoin':
+                    stablecoins_list.append(i)
 
-    price_usd = pd.DataFrame(df['quote'].apply(lambda row: glom(row, 'USD.price')))
-    price_usd = price_usd.rename(columns={'quote': 'price_usd'})
+        stablecoins = pd.DataFrame(data_cmc.iloc[stablecoins_list])
+        data_cmc = data_cmc.loc[~data_cmc['id'].isin(list(stablecoins['id']))]
+        data_cmc = data_cmc.reset_index(drop = True)
 
-    df.drop('quote', axis=1, inplace=True)
 
-    df = df.merge(price_usd, left_index=True, right_index=True)
+        # Top 100 coins with Bitcoin Price Equivalence < Bitcoin Price
 
-    btc_total_supply = df[df['id'] == 1]['total_supply']
-    df = df.assign(BPE = df.total_supply / btc_total_supply[0] * df.price_usd)
-    df = df[(df['cmc_rank'] <= 100) & (df['BPE'] <= df[df['id'] == 1]['BPE'][0])]
-    df = df.set_index('id')
-    df = pd.DataFrame(df['symbol'].str.lower() + base_quote)
+        df = pd.DataFrame(data_cmc, columns=['id', 'symbol', 'cmc_rank', 'total_supply', 'quote'])
 
+        price_usd = pd.DataFrame(df['quote'].apply(lambda row: glom(row, 'USD.price')))
+        price_usd = price_usd.rename(columns={'quote': 'price_usd'})
+
+        df.drop('quote', axis=1, inplace=True)
+
+        df = df.merge(price_usd, left_index=True, right_index=True)
+
+        btc_total_supply = df[df['id'] == 1]['total_supply']
+        df = df.assign(BPE = df.total_supply / btc_total_supply[0] * df.price_usd)
+        df = df[(df['cmc_rank'] <= 100) & (df['BPE'] <= df[df['id'] == 1]['BPE'][0])]
+        df = df.set_index('id')
+        df = pd.DataFrame(df['symbol'].str.lower() + base_quote)
+
+        cmc_req_cnt = 0
 
     # Huobi API
 
@@ -589,6 +593,8 @@ while True:
                         bot[3] = 'signal'
                     break
     print(bots)
+
+    cmc_req_cnt += 1
 
     start = time.perf_counter()
     stop = 0
