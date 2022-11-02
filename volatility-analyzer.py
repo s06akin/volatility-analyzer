@@ -592,7 +592,9 @@ while True:
                     if response.ok:
                         bot[3] = 'signal'
                     break
+    print(mf_list)
     print(bots)
+    print('-' * 60)
 
     cmc_req_cnt += 1
 
