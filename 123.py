@@ -12,31 +12,38 @@ import datetime
 from urllib import parse
 import urllib.parse
 
-
-
 # Params
 
 base_quote = 'btc'
 barrier = 0.5
 result_trading_pairs = 3
 
+# BTC_volume_barrier = 500
+# USD_volume_barrier = 10000000
+
+# Volume filter
+# if base_quote == 'btc':
+#     mf = mf[mf['vol'] > BTC_volume_barrier]
+# else:
+#     mf = mf[mf['vol'] > USD_volume_barrier]
+
 timeframes = {
-    '3h_1m': [180, '1min'],
-    '6h_1m': [360, '1min'],
-    '24h_5m': [288, '5min'],
-    '48h_5m': [576, '5min'],
-    '72h_15m': [288, '15min']
+  '3h_1m': [180, '1min'],
+  '6h_1m': [360, '1min'],
+  '24h_5m': [288, '5min'],
+  '48h_5m': [576, '5min'],
+  '72h_15m': [288, '15min']
 }
 
 pump_dump_filter = {
-    '15min': [3, '15min', 10],
-    '60min': [3, '60min', 20],
-    '4hour': [3, '4hour', 30],
-    '1day': [3, '1day', 50]
+  '15min': [3, '15min', 10],
+  '60min': [3, '60min', 20],
+  '4hour': [3, '4hour', 30],
+  '1day': [3, '1day', 50]
 }
 
-bots = [[582818, 'doge/btc', 'working', 'no signal'],
-        [582817, 'chz/btc', 'working', 'no signal'],
+bots = [[582818, 'doge/btc', 'waiting', 'no signal'],
+        [582817, 'chz/btc', 'waiting', 'no signal'],
         [582703, 'ht/btc', 'working', 'no signal']]
 
 url = 'https://app.revenuebot.io/external/tv'
@@ -44,17 +51,139 @@ url = 'https://app.revenuebot.io/external/tv'
 newHeaders = {'Content-type': 'application/json', 'Accept': 'application/json'}
 
 data = {
-    "action": "enter_cycle",
-    "ref_token": "a06e744b-b5e6-11ec-9e28-8e4b67c9fcba",
-    "bot_id": 582818,
-    "pair": "ada/btc"
+   "action" : "enter_cycle",
+   "ref_token" : "a06e744b-b5e6-11ec-9e28-8e4b67c9fcba",
+   "bot_id" : 582818,
+   "pair": "ada/btc"
 }
 
-huobi_api_key = "8ac3009b-9e4c7392-ed2htwf5tf-7e1e3"
-huobi_secret_key = "3f2b17c9-5080f327-9460b099-e62fd"
+# Coinmarketcap API
 
+url_cmc = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
 
-# Huobi SDK
+parameters_cmc = {
+  'start':'1',
+  'limit':'200'
+}
+
+headers_cmc = {
+  'Accepts': 'application/json',
+  'X-CMC_PRO_API_KEY': '7326fb8d-6d2a-4017-b422-fbaf8ac4801b'
+}
+
+session_cmc = requests.Session()
+session_cmc.headers.update(headers_cmc)
+
+try:
+  response_cmc = session_cmc.get(url_cmc, params=parameters_cmc).json()
+  data_cmc = pd.DataFrame(response_cmc['data'])
+except (requests.ConnectionError, requests.Timeout, requests.TooManyRedirects) as e:
+  print(e)
+
+# Exclude stablecoins
+
+stablecoins_list = []
+for i in data_cmc.index:
+    for j in range(len(data_cmc['tags'][i])):
+        if data_cmc['tags'][i][j] == 'stablecoin':
+            stablecoins_list.append(i)
+
+stablecoins = pd.DataFrame(data_cmc.iloc[stablecoins_list])
+data_cmc = data_cmc.loc[~data_cmc['id'].isin(list(stablecoins['id']))]
+data_cmc = data_cmc.reset_index(drop = True)
+
+# Top 100 coins with Bitcoin Price Equivalence < Bitcoin Price
+
+df = pd.DataFrame(data_cmc, columns=['id', 'symbol', 'cmc_rank', 'total_supply', 'quote'])
+
+price_usd = pd.DataFrame(df['quote'].apply(lambda row: glom(row, 'USD.price')))
+price_usd = price_usd.rename(columns={'quote': 'price_usd'})
+
+df.drop('quote', axis=1, inplace=True)
+
+df = df.merge(price_usd, left_index=True, right_index=True)
+
+btc_total_supply = df[df['id']==1]['total_supply']
+df = df.assign(BPE = df.total_supply / btc_total_supply[0] * df.price_usd)
+df = df[(df['cmc_rank'] <= 100) & (df['BPE'] <= df[df['id']==1]['BPE'][0])]
+df = df.set_index('id')
+df = pd.DataFrame(df['symbol'].str.lower() + base_quote)
+
+# Huobi API
+
+url_huobi_symbols = 'https://api.huobi.pro/v1/common/symbols'
+
+session_huobi = requests.Session()
+
+try:
+  repsonse_huobi = session_huobi.get(url_huobi_symbols).json()
+  hs = pd.DataFrame(repsonse_huobi['data'], columns=['symbol', 'state'])
+except (requests.ConnectionError, requests.Timeout, requests.TooManyRedirects) as e:
+  print(e)
+
+hs = hs[hs['state'] == 'online']
+hs.drop('state', axis=1, inplace=True)
+hs = hs.loc[hs['symbol'].str.endswith(base_quote)]
+
+rdf = pd.merge(df, hs, on='symbol', how='inner')
+
+# Pump/Dump filter
+
+for key, value in pump_dump_filter.items():
+    rdf[key] = ''
+    size = value[0]
+    period = value[1]
+    pd_percent = value[2]
+
+    rdf['vol'] = ''
+
+    for i, j in enumerate(rdf['symbol']):
+        symbol = rdf['symbol'][i]
+        pdf_url = f'https://api.huobi.pro/market/history/kline?symbol={symbol}&period={period}&size={size}'
+        try:
+            repsonse = session_huobi.get(pdf_url).json()
+            pdf = pd.DataFrame(repsonse['data'], columns=['open', 'close', 'vol'])
+            pdf['%_price_change'] = abs(pdf['open'] - pdf['close']) / pdf['open'] * 100
+            rdf.loc[rdf['symbol'] == symbol, [key]] = pdf['%_price_change'].max()
+
+            rdf.loc[rdf['symbol'] == symbol, ['vol']] = pdf['vol'].max()
+
+        except (requests.ConnectionError, requests.Timeout, requests.TooManyRedirects) as e:
+            print(e)
+
+rdf[key] = rdf[key].astype(int)
+rdf = rdf[rdf[key] < pd_percent]
+
+# Multi directional fluctuations
+
+rdf = pd.merge(df, hs, on='symbol', how='inner')
+
+for key, value in timeframes.items():
+    rdf[key] = ''
+    size = value[0]
+    period = value[1]
+
+    for i, j in enumerate(rdf['symbol']):
+        symbol = rdf['symbol'][i]
+        mdf_url = f'https://api.huobi.pro/market/history/kline?symbol={symbol}&period={period}&size={size}'
+        try:
+            repsonse = session_huobi.get(mdf_url).json()
+            mf = pd.DataFrame(repsonse['data'], columns=['high', 'low'])
+            mf['fluct'] = (mf['high'] / ((mf['high'] - mf['low']) / 2 + mf['low']) - 1) * 100
+            mf['count'] = mf['fluct'] > barrier
+            mf['count'] = mf['count'].astype(int)
+            mf = mf['count'].sum()
+            rdf.loc[rdf['symbol'] == symbol, [key]] = mf
+        except (requests.ConnectionError, requests.Timeout, requests.TooManyRedirects) as e:
+            print(e)
+
+rdf['multi_fluct'] = rdf['3h_1m'] * 1.1 + rdf['6h_1m'] * 1.2 + rdf['24h_5m'] * 1.3 + rdf['48h_5m'] * 1.4 + rdf[
+    '72h_15m'] * 1.5
+mf_list = list(rdf.sort_values(by='multi_fluct', ascending=False)['symbol'].head(result_trading_pairs))
+
+for i, j in enumerate(mf_list):
+    mf_list[i] = mf_list[i][:-3] + '/' + mf_list[i][-3:]
+
 
 class TypeCheck:
     @staticmethod
@@ -90,11 +219,12 @@ class AccountClient(object):
     def get_accounts(self):
         return GetAccountsService({}).request(**self.__kwargs)
 
-    # def get_balance(self, account_id: 'int'):
-    #     params = {
-    #         "account-id": account_id
-    #     }
-    #     return GetBalanceService(params).request(**self.__kwargs)
+    #     def get_balance(self, account_id: 'int'):
+    #         check_should_not_none(account_id, "account-id")
+    #         params = {
+    #             "account-id": account_id
+    #         }
+    #         return GetBalanceService(params).request(**self.__kwargs)
 
     def get_account_by_type_and_symbol(self, account_type, symbol):
         accounts = self.get_accounts()
@@ -273,12 +403,12 @@ class UrlParamsBuilder(object):
         return json.dumps(self.param_map)
 
 
-session_huobi = requests.Session()
+session = session_huobi
 
 
 def call_sync(request, is_checked=False):
     if request.method == "GET":
-        response = session_huobi.get(request.host + request.url, headers=request.header)
+        response = session.get(request.host + request.url, headers=request.header)
         if is_checked is True:
             return response.text
         dict_data = json.loads(response.text.encode().decode('utf-8-sig'))
@@ -423,176 +553,49 @@ class PrintBasic:
             print(str(data))
 
 
-# MAIN
+api_key = "8ac3009b-9e4c7392-ed2htwf5tf-7e1e3"
+secret_key = "3f2b17c9-5080f327-9460b099-e62fd"
 
-while True:
+account_client = AccountClient(api_key=api_key, secret_key=secret_key)
+account_spot = account_client.get_account_by_type_and_symbol(account_type="spot", symbol=None)
+account_id = account_spot.id
 
-    # Coinmarketcap API
-    url_cmc = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
+for bot in bots:
+    symbol = bot[1].replace('/', '')
+    trade_client = TradeClient(api_key=api_key, secret_key=secret_key)
+    trade_list = trade_client.get_open_orders(symbol=symbol, account_id=account_id)
 
-    parameters_cmc = {
-      'start': '1',
-      'limit': '200'
-    }
+    if [obj.id for obj in trade_list]:
+        bot[2] = 'working'
+        bot[3] = 'no signal'
+    else:
+        bot[2] = 'waiting'
 
-    headers_cmc = {
-      'Accepts': 'application/json',
-      'X-CMC_PRO_API_KEY': '7326fb8d-6d2a-4017-b422-fbaf8ac4801b'
-    }
-
-    session_cmc = requests.Session()
-    session_cmc.headers.update(headers_cmc)
-
-    response_cmc = session_cmc.get(url_cmc, params=parameters_cmc).json()
-    data_cmc = pd.DataFrame(response_cmc['data'])
-
-
-    # Exclude stablecoins
-
-    stablecoins_list = []
-    for i in data_cmc.index:
-        for j in range(len(data_cmc['tags'][i])):
-            if data_cmc['tags'][i][j] == 'stablecoin':
-                stablecoins_list.append(i)
-
-    stablecoins = pd.DataFrame(data_cmc.iloc[stablecoins_list])
-    data_cmc = data_cmc.loc[~data_cmc['id'].isin(list(stablecoins['id']))]
-    data_cmc = data_cmc.reset_index(drop = True)
-
-
-    # Top 100 coins with Bitcoin Price Equivalence < Bitcoin Price
-
-    df = pd.DataFrame(data_cmc, columns=['id', 'symbol', 'cmc_rank', 'total_supply', 'quote'])
-
-    price_usd = pd.DataFrame(df['quote'].apply(lambda row: glom(row, 'USD.price')))
-    price_usd = price_usd.rename(columns={'quote': 'price_usd'})
-
-    df.drop('quote', axis=1, inplace=True)
-
-    df = df.merge(price_usd, left_index=True, right_index=True)
-
-    btc_total_supply = df[df['id'] == 1]['total_supply']
-    df = df.assign(BPE = df.total_supply / btc_total_supply[0] * df.price_usd)
-    df = df[(df['cmc_rank'] <= 100) & (df['BPE'] <= df[df['id'] == 1]['BPE'][0])]
-    df = df.set_index('id')
-    df = pd.DataFrame(df['symbol'].str.lower() + base_quote)
-
-
-    # Huobi API
-
-    url_huobi_symbols = 'https://api.huobi.pro/v1/common/symbols'
-
-    # session_huobi = requests.Session()
-
-    repsonse_huobi = session_huobi.get(url_huobi_symbols).json()
-    hs = pd.DataFrame(repsonse_huobi['data'], columns=['symbol', 'state'])
-
-    hs = hs[hs['state'] == 'online']
-    hs.drop('state', axis=1, inplace=True)
-    hs = hs.loc[hs['symbol'].str.endswith(base_quote)]
-
-    rdf = pd.merge(df, hs, on='symbol', how='inner')
-
-
-    # Pump/Dump filter
-
-    for key, value in pump_dump_filter.items():
-        rdf[key] = ''
-        size = value[0]
-        period = value[1]
-        pd_percent = value[2]
-
-        rdf['vol'] = ''
-
-        for i, j in enumerate(rdf['symbol']):
-            symbol = rdf['symbol'][i]
-            pdf_url = f'https://api.huobi.pro/market/history/kline?symbol={symbol}&period={period}&size={size}'
-            repsonse = session_huobi.get(pdf_url).json()
-            pdf = pd.DataFrame(repsonse['data'], columns=['open', 'close', 'vol'])
-            pdf['%_price_change'] = abs(pdf['open'] - pdf['close']) / pdf['open'] * 100
-            rdf.loc[rdf['symbol'] == symbol, [key]] = pdf['%_price_change'].max()
-            rdf.loc[rdf['symbol'] == symbol, ['vol']] = pdf['vol'].max()
-
-
-    rdf[key] = rdf[key].astype(int)
-    rdf = rdf[rdf[key] < pd_percent]
-
-
-    # Multi directional fluctuations
-
-    rdf = pd.merge(df, hs, on='symbol', how='inner')
-
-    for key, value in timeframes.items():
-        rdf[key] = ''
-        size = value[0]
-        period = value[1]
-
-        for i, j in enumerate(rdf['symbol']):
-            symbol = rdf['symbol'][i]
-            mdf_url = f'https://api.huobi.pro/market/history/kline?symbol={symbol}&period={period}&size={size}'
-
-            repsonse = session_huobi.get(mdf_url).json()
-            mf = pd.DataFrame(repsonse['data'], columns=['high', 'low'])
-            mf['fluct'] = (mf['high'] / ((mf['high'] - mf['low']) / 2 + mf['low']) - 1) * 100
-            mf['count'] = mf['fluct'] > barrier
-            mf['count'] = mf['count'].astype(int)
-            mf = mf['count'].sum()
-            rdf.loc[rdf['symbol'] == symbol, [key]] = mf
-
-
-    rdf['multi_fluct'] = rdf['3h_1m'] * 1.1 + rdf['6h_1m'] * 1.2 + rdf['24h_5m'] * 1.3 + rdf['48h_5m'] * 1.4 + rdf[
-        '72h_15m'] * 1.5
-    mf_list = list(rdf.sort_values(by='multi_fluct', ascending=False)['symbol'].head(result_trading_pairs))
-
-    for i, j in enumerate(mf_list):
-        mf_list[i] = mf_list[i][:-3] + '/' + mf_list[i][-3:]
-
-
-    # Huobi open orders
-
-    account_client = AccountClient(api_key=huobi_api_key, secret_key=huobi_secret_key)
-    account_spot = account_client.get_account_by_type_and_symbol(account_type="spot", symbol=None)
-    account_id = account_spot.id
-
+for new_pair in mf_list:
+    working_pair = 'N'
     for bot in bots:
-        symbol = bot[1].replace('/', '')
-        trade_client = TradeClient(api_key=huobi_api_key, secret_key=huobi_secret_key)
-        trade_list = trade_client.get_open_orders(symbol=symbol, account_id=account_id)
-
-        if [obj.id for obj in trade_list]:
-            bot[2] = 'working'
-            bot[3] = 'no signal'
-        else:
-            bot[2] = 'waiting'
-
-
-    # Signals
-
-    for new_pair in mf_list:
-        working_pair = 'N'
-        for bot in bots:
-            if bot[1] == new_pair and bot[2] == 'working':
-                working_pair = 'Y'
-                break
-        if working_pair == 'N':
-            for bot in bots:
-                if bot[2] == 'waiting' and bot[3] == 'no signal':
-                    bot[1] = new_pair
-                    data['bot_id'] = bot[0]
-                    data['pair'] = new_pair
-                    send_data = json.dumps(data)
-                    response = requests.post(url, data=send_data, headers=newHeaders)
-
-                    print(response.status_code, send_data)
-
-                    if response.ok:
-                        bot[3] = 'signal'
-                    break
-    print(bots)
-
-    start = time.perf_counter()
-    stop = 0
-    while True:
-        stop = time.perf_counter()
-        if stop - start > 300:
+        if bot[1] == new_pair and bot[2] == 'working':
+            working_pair = 'Y'
             break
+    if working_pair == 'N':
+        for bot in bots:
+            if bot[2] == 'waiting' and bot[3] == 'no signal':
+                bot[1] = new_pair
+                data['bot_id'] = bot[0]
+                data['pair'] = new_pair
+                send_data = json.dumps(data)
+                response = requests.post(url, data=send_data, headers=newHeaders)
+
+                print(response.status_code, send_data)
+
+                if response.ok:
+                    bot[3] = 'signal'
+                else:
+                    break
+
+# start = time.perf_counter()
+# stop = 0
+# while True:
+#     stop = time.perf_counter()
+#     if stop - start > 300:
+#         break
