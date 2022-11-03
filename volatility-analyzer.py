@@ -582,7 +582,7 @@ while True:
             elif bot[1] == new_pair and bot[3] == 'filter':
                 waiting_filter = 'Y'
                 break
-        if working_pair == 'N' or waiting_filter == 'N':
+        if working_pair == 'N' and waiting_filter == 'N':
             for bot in bots:
                 if bot[2] == 'waiting' and bot[3] == 'normal':
                     bot[1] = new_pair
