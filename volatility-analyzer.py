@@ -35,9 +35,9 @@ pump_dump_filter = {
     '1day': [3, '1day', 50]
 }
 
-bots = [[582818, 'doge/btc', 'working', 'no signal'],
-        [582817, 'doge/btc', 'working', 'no signal'],
-        [582703, 'ht/btc', 'working', 'no signal']]
+bots = [[582818, 'doge/btc', 'waiting', 'filter'],
+        [582817, 'doge/btc', 'working', 'normal'],
+        [582703, 'ht/btc', 'working', 'normal']]
 
 url = 'https://app.revenuebot.io/external/tv'
 
@@ -565,7 +565,7 @@ while True:
 
         if [obj.id for obj in trade_list]:
             bot[2] = 'working'
-            bot[3] = 'no signal'
+            bot[3] = 'normal'
         else:
             bot[2] = 'waiting'
 
@@ -574,13 +574,17 @@ while True:
 
     for new_pair in mf_list:
         working_pair = 'N'
+        waiting_filter = 'N'
         for bot in bots:
             if bot[1] == new_pair and bot[2] == 'working':
                 working_pair = 'Y'
                 break
-        if working_pair == 'N':
+            elif bot[1] == new_pair and bot[3] == 'filter':
+                waiting_filter = 'Y'
+                break
+        if working_pair == 'N' or waiting_filter == 'N':
             for bot in bots:
-                if bot[2] == 'waiting' and bot[3] == 'no signal':
+                if bot[2] == 'waiting' and bot[3] == 'normal':
                     bot[1] = new_pair
                     data['bot_id'] = bot[0]
                     data['pair'] = new_pair
@@ -590,7 +594,7 @@ while True:
                     print(response.status_code, response.text, response.raise_for_status(), send_data)
 
                     if response.ok:
-                        bot[3] = 'signal'
+                        bot[3] = 'filter'
                     break
     print(mf_list)
     s = [[str(e) for e in row] for row in bots]
