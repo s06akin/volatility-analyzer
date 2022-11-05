@@ -568,6 +568,7 @@ while True:
             bot[3] = 'normal'
         else:
             bot[2] = 'waiting'
+            bot[3] = 'normal'
 
 
     # Signals
