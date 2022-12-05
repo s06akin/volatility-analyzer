@@ -592,7 +592,7 @@ while True:
                     send_data = json.dumps(data)
                     response = requests.post(url, data=send_data, headers=newHeaders)
 
-                    print(f'{data['bot_id']} - {data['pair']}')
+                    print(data['bot_id'], data['pair'])
                     print(response.status_code)
                     print(response.text)
                     print(response.raise_for_status())
