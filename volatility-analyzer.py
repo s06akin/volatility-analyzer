@@ -593,6 +593,7 @@ while True:
                     response = requests.post(url, data=send_data, headers=newHeaders)
 
                     print(mf_list)
+                    print('-' * 60)
                     print(data['bot_id'], data['pair'])
                     print(response.status_code)
                     print(response.text)
