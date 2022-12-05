@@ -592,6 +592,7 @@ while True:
                     send_data = json.dumps(data)
                     response = requests.post(url, data=send_data, headers=newHeaders)
 
+                    print(mf_list)
                     print(data['bot_id'], data['pair'])
                     print(response.status_code)
                     print(response.text)
@@ -601,7 +602,6 @@ while True:
                     if response.ok:
                         bot[3] = 'filter'
 
-                    print(mf_list)
                     s = [[str(e) for e in row] for row in bots]
                     lens = [max(map(len, col)) for col in zip(*s)]
                     fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
