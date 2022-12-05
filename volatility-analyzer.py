@@ -592,7 +592,11 @@ while True:
                     send_data = json.dumps(data)
                     response = requests.post(url, data=send_data, headers=newHeaders)
 
-                    print(response.status_code, response.text, response.raise_for_status(), send_data)
+                    print(f'{data['bot_id']} - {data['pair']}')
+                    print(response.status_code)
+                    print(response.text)
+                    print(response.raise_for_status())
+                    print(send_data)
 
                     if response.ok:
                         bot[3] = 'filter'
