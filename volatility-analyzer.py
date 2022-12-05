@@ -596,8 +596,11 @@ while True:
                     print(response.status_code)
                     print(response.text)
                     print(response.raise_for_status())
-                    print(send_data)
                     print('-' * 60)
+
+                    if response.ok:
+                        bot[3] = 'filter'
+
                     print(mf_list)
                     s = [[str(e) for e in row] for row in bots]
                     lens = [max(map(len, col)) for col in zip(*s)]
@@ -606,17 +609,7 @@ while True:
                     print('\n'.join(table))
                     print('=' * 60)
 
-                    if response.ok:
-                        bot[3] = 'filter'
                     break
-    print(mf_list)
-    s = [[str(e) for e in row] for row in bots]
-    lens = [max(map(len, col)) for col in zip(*s)]
-    fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
-    table = [fmt.format(*row) for row in s]
-    print('\n'.join(table))
-    print('=' * 60)
-    print('=' * 60)
 
     cmc_req_cnt += 1
 
