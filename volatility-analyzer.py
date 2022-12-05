@@ -615,7 +615,8 @@ while True:
     fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
     table = [fmt.format(*row) for row in s]
     print('\n'.join(table))
-    print('-' * 60)
+    print('=' * 60)
+    print('=' * 60)
 
     cmc_req_cnt += 1
 
