@@ -36,8 +36,8 @@ pump_dump_filter = {
 }
 
 bots = [[582818, 'nexo/btc', 'working', 'normal'],
-        [582817, 'doge/btc', 'working', 'normal'],
-        [582703, 'ht/btc', 'waiting', 'normal']]
+        [582817, 'doge/btc', 'waiting', 'filter'],
+        [582703, 'uni/btc', 'working', 'normal']]
 
 url = 'https://app.revenuebot.io/external/tv'
 
@@ -597,6 +597,14 @@ while True:
                     print(response.text)
                     print(response.raise_for_status())
                     print(send_data)
+                    print('-' * 60)
+                    print(mf_list)
+                    s = [[str(e) for e in row] for row in bots]
+                    lens = [max(map(len, col)) for col in zip(*s)]
+                    fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
+                    table = [fmt.format(*row) for row in s]
+                    print('\n'.join(table))
+                    print('=' * 60)
 
                     if response.ok:
                         bot[3] = 'filter'
