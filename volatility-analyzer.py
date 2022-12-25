@@ -16,8 +16,8 @@ import urllib.parse
 
 # Params
 
-base_quote = 'btc'
-barrier = 0.5
+base_quote = 'usdt'
+barrier = 1
 result_trading_pairs = 3
 
 timeframes = {
@@ -35,8 +35,8 @@ pump_dump_filter = {
     '1day': [3, '1day', 50]
 }
 
-bots = [[582818, 'grt/btc', 'working', 'normal'],
-        [582817, 'doge/btc', 'working', 'normal'],
+bots = [[582818, 'grt/btc', 'waiting', 'normal'],
+        [582817, 'doge/btc', 'waiting', 'normal'],
         [582703, 'eos/btc', 'waiting', 'normal']]
 
 url = 'https://app.revenuebot.io/external/tv'
