@@ -36,7 +36,7 @@ pump_dump_filter = {
     '1day': [3, '1day', 50]
 }
 
-bots = [[582818, 'grt/btc', 'waiting', 'normal'],
+bots = [[582818, 'xcn/usdt', 'waiting', 'normal'],
         [582817, 'doge/btc', 'waiting', 'normal'],
         [582703, 'eos/btc', 'waiting', 'normal']]
 
