@@ -17,7 +17,7 @@ import urllib.parse
 # Params
 
 base_quote = 'usdt'
-exclude = ['dashusdt']
+exclude = ['dashusdt', 'zecusdt']
 barrier = 1
 result_trading_pairs = 3
 
