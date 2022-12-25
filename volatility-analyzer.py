@@ -17,6 +17,7 @@ import urllib.parse
 # Params
 
 base_quote = 'usdt'
+exclude = ['dashusdt']
 barrier = 1
 result_trading_pairs = 3
 
@@ -546,6 +547,7 @@ while True:
 
     rdf['multi_fluct'] = rdf['3h_1m'] * 1.1 + rdf['6h_1m'] * 1.2 + rdf['24h_5m'] * 1.3 + rdf['48h_5m'] * 1.4 + rdf[
         '72h_15m'] * 1.5
+    rdf = rdf.loc[~rdf['symbol'].isin(exclude)]
     mf_list = list(rdf.sort_values(by='multi_fluct', ascending=False)['symbol'].head(result_trading_pairs))
 
     for i, j in enumerate(mf_list):
