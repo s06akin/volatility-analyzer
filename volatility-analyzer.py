@@ -549,7 +549,7 @@ while True:
     mf_list = list(rdf.sort_values(by='multi_fluct', ascending=False)['symbol'].head(result_trading_pairs))
 
     for i, j in enumerate(mf_list):
-        mf_list[i] = mf_list[i][:-3] + '/' + mf_list[i][-3:]
+        mf_list[i] = mf_list[i][:-len(base_quote)] + '/' + mf_list[i][-len(base_quote):]
 
 
     # Huobi open orders
