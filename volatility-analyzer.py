@@ -17,7 +17,7 @@ import urllib.parse
 # Params
 
 base_quote = 'usdt'
-exclude = ['dashusdt', 'zecusdt', 'xcnusdt']
+exclude = []
 barrier = 1
 result_trading_pairs = 3
 
@@ -36,8 +36,8 @@ pump_dump_filter = {
     '1day': [3, '1day', 50]
 }
 
-bots = [[582818, 'lunc/usdt', 'working', 'normal'],
-        [582817, 'xcn/usdt', 'working', 'normal'],
+bots = [[582818, 'xmr/usdt', 'working', 'normal'],
+        [582817, 'xmr/usdt', 'waiting', 'normal'],
         [582703, 'xdc/usdt', 'working', 'normal']]
 
 url = 'https://app.revenuebot.io/external/tv'
@@ -570,7 +570,7 @@ while True:
             bot[3] = 'normal'
         else:
             bot[2] = 'waiting'
-            bot[3] = 'normal'
+            bot[3] = 'signal'
 
 
     # Signals
@@ -587,7 +587,7 @@ while True:
                 break
         if working_pair == 'N' and waiting_filter == 'N':
             for bot in bots:
-                if bot[2] == 'waiting' and bot[3] == 'normal':
+                if bot[2] == 'waiting' and bot[3] == 'signal':
                     bot[1] = new_pair
                     data['bot_id'] = bot[0]
                     data['pair'] = new_pair
