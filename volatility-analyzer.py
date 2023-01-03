@@ -36,9 +36,9 @@ pump_dump_filter = {
     '1day': [3, '1day', 50]
 }
 
-bots = [[582818, 'xmr/usdt', 'working', 'normal'],
-        [582817, 'ldo/usdt', 'waiting', 'signal'],
-        [582703, 'xdc/usdt', 'working', 'normal']]
+bots = [[582818, 'kava/usdt', 'working', 'normal'],
+        [582817, 'sol/usdt', 'waiting', 'signal'],
+        [582703, 'xcn/usdt', 'working', 'normal']]
 
 url = 'https://app.revenuebot.io/external/tv'
 
@@ -577,15 +577,11 @@ while True:
 
     for new_pair in mf_list:
         working_pair = 'N'
-        waiting_filter = 'N'
         for bot in bots:
             if bot[1] == new_pair and bot[2] == 'working':
                 working_pair = 'Y'
                 break
-            elif bot[1] == new_pair and bot[3] == 'filter':
-                waiting_filter = 'Y'
-                break
-        if working_pair == 'N' and waiting_filter == 'N':
+        if working_pair == 'N':
             for bot in bots:
                 if bot[2] == 'waiting' and bot[3] == 'signal':
                     bot[1] = new_pair
