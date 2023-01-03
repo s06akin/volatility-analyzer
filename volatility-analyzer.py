@@ -577,11 +577,15 @@ while True:
 
     for new_pair in mf_list:
         working_pair = 'N'
+        waiting_filter = 'N'
         for bot in bots:
             if bot[1] == new_pair and bot[2] == 'working':
                 working_pair = 'Y'
                 break
-        if working_pair == 'N':
+            elif bot[1] == new_pair and bot[3] == 'filter':
+                waiting_filter = 'Y'
+                break
+        if working_pair == 'N' and waiting_filter == 'N':
             for bot in bots:
                 if bot[2] == 'waiting' and bot[3] == 'signal':
                     bot[1] = new_pair
