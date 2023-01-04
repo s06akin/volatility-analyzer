@@ -614,6 +614,16 @@ while True:
 
                     break
 
+    print('*' * 60)
+    print(mf_list)
+    print('-' * 60)
+    s = [[str(e) for e in row] for row in bots]
+    lens = [max(map(len, col)) for col in zip(*s)]
+    fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
+    table = [fmt.format(*row) for row in s]
+    print('\n'.join(table))
+    print('*' * 60)
+
     cmc_req_cnt += 1
 
     start = time.perf_counter()
