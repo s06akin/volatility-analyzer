@@ -36,9 +36,9 @@ pump_dump_filter = {
     '1day': [3, '1day', 50]
 }
 
-bots = [[582818, 'kava/usdt', 'working', 'normal'],
-        [582817, 'sol/usdt', 'waiting', 'signal'],
-        [582703, 'xcn/usdt', 'working', 'normal']]
+bots = [[582818, 'sol/usdt', 'working', 'normal'],
+        [582817, 'xcn/usdt', 'waiting', 'filter'],
+        [582703, 'egld/usdt', 'waiting', 'signal']]
 
 url = 'https://app.revenuebot.io/external/tv'
 
